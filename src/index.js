@@ -1,17 +1,82 @@
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import './index.css';
-import App from './App';
-import reportWebVitals from './reportWebVitals';
+import React, { useState, useEffect, useMemo } from "react";
+import ReactDOM from "react-dom/client";
+import "./index.css";
+import { GoogleMap, LoadScript, MarkerF } from "@react-google-maps/api";
+import { getShouldCangeAnchorLocation, getNewLocation } from "./helper";
 
-const root = ReactDOM.createRoot(document.getElementById('root'));
+const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
   <React.StrictMode>
-    <App />
+    <div className="container">
+      <Map />
+    </div>
   </React.StrictMode>
 );
 
-// If you want to start measuring performance in your app, pass a function
-// to log results (for example: reportWebVitals(console.log))
-// or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
-reportWebVitals();
+const containerStyle = {
+  width: "100%",
+  height: "100vh",
+};
+const initialCenter = {
+  lat: -33,
+  lng: 151,
+};
+
+const initialZoom = 13;
+
+function TextBox({ position }) {
+  return (
+    <div className="text-box">
+      <span>{`lat: ${position?.lat}`}</span>
+      <span>{`lon: ${position?.lng}`}</span>
+    </div>
+  );
+}
+
+function Map() {
+  const [mapCenter, setMeapCenterer] = useState(initialCenter);
+  const [anchorLocation, setAnchorLocation] = useState(initialCenter);
+  const [currentLocation, setCurrentLocation] = useState(initialCenter);
+  const [shouldReCenter, setShouldReCenter] = useState(true);
+  useEffect(() => {
+    setTimeout(() => {
+      const newLocation = getNewLocation(currentLocation);
+      const shouldCangeAnchorLocation = getShouldCangeAnchorLocation(
+        anchorLocation,
+        currentLocation
+      );
+      setCurrentLocation(newLocation);
+      if (shouldReCenter) {
+        setMeapCenterer(newLocation);
+      }
+
+      if (shouldCangeAnchorLocation) {
+        setAnchorLocation(currentLocation);
+        setShouldReCenter(true);
+        setMeapCenterer(newLocation);
+      }
+    }, 500);
+  }, [currentLocation, anchorLocation]);
+
+  const memoMarker = useMemo(() => {
+    return <MarkerF position={anchorLocation} />;
+  }, [anchorLocation]);
+
+  return (
+    <LoadScript googleMapsApiKey={""}>
+      <GoogleMap
+        mapContainerStyle={containerStyle}
+        center={mapCenter}
+        zoom={initialZoom}
+        onDragStart={() => {
+          setShouldReCenter(false);
+        }}
+      >
+        {memoMarker}
+      </GoogleMap>
+      <TextBox position={currentLocation} />
+    </LoadScript>
+  );
+}
+
+export default React.memo(Map);
